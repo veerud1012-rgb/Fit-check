@@ -1,0 +1,6 @@
+{
+  "name": "FitPulse Gym & Workout Tracker",
+  "description": "Premium Gym Exercise & Workout Tracker Web App with AI Assistant, Custom Splits, Timer, Progressive Overload & Audio Reminders.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
