@@ -45,9 +45,12 @@ import { RemindersSettingsView } from "./components/RemindersSettingsView";
 import { SettingsView } from "./components/SettingsView";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { MissedWorkoutModal } from "./components/MissedWorkoutModal";
+import { StartWorkoutModal } from "./components/StartWorkoutModal";
 
-import { checkWorkoutReminders, playSynthSound, stopSynthSound } from "./utils/audioSynth";
+import { Volume2, Square, BellRing } from "lucide-react";
+import { checkWorkoutReminders, playSynthSound, stopSynthSound, subscribeAudioState } from "./utils/audioSynth";
 import { triggerDeviceVibration } from "./utils/notifications";
+import { loadCustomAudioFromIDB } from "./utils/audioStorage";
 
 export const App: React.FC = () => {
   // App state
@@ -62,10 +65,56 @@ export const App: React.FC = () => {
   // Navigation & View state
   const [activeTab, setActiveTab] = useState<AppTab>("dashboard");
   const [isWorkoutMode, setIsWorkoutMode] = useState(false);
+  const [showStartWorkoutModal, setShowStartWorkoutModal] = useState(false);
+  const [sessionCustomRestSec, setSessionCustomRestSec] = useState<number | undefined>(undefined);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [missedWorkoutPlan, setMissedWorkoutPlan] = useState<WorkoutPlan | null>(null);
   const [isAlarmRinging, setIsAlarmRinging] = useState(false);
+  const [isAudioActive, setIsAudioActive] = useState(false);
+
+  // Subscribe to global audio state
+  useEffect(() => {
+    const unsubscribe = subscribeAudioState((active) => {
+      setIsAudioActive(active);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Stop alarm helper that also automatically deselects/disables active scheduled reminders
+  const handleStopAlarmSound = () => {
+    stopSynthSound();
+    setIsAlarmRinging(false);
+    const currentHHMM = new Date().toTimeString().slice(0, 5);
+    setNotifPrefs((prev) => {
+      let changed = false;
+      const updatedReminders = prev.reminders.map((r) => {
+        if (r.enabled && r.time === currentHHMM) {
+          changed = true;
+          return { ...r, enabled: false };
+        }
+        return r;
+      });
+      if (changed) {
+        const updated = { ...prev, reminders: updatedReminders };
+        saveNotificationPreferences(updated);
+        return updated;
+      }
+      return prev;
+    });
+  };
+
+  // Load custom audio from IndexedDB on startup
+  useEffect(() => {
+    loadCustomAudioFromIDB().then((customAudioUrl) => {
+      if (customAudioUrl) {
+        setNotifPrefs((prev) => ({
+          ...prev,
+          customAudioUrl,
+        }));
+      }
+    });
+  }, []);
 
   // Check onboarding
   useEffect(() => {
@@ -78,14 +127,24 @@ export const App: React.FC = () => {
   // Periodic alarm reminder background check loop
   useEffect(() => {
     const reminderInterval = setInterval(() => {
-      const isRinging = checkWorkoutReminders(
+      const triggeredId = checkWorkoutReminders(
         notifPrefs.reminders,
         notifPrefs.alarmVolume,
-        notifPrefs.vibrationEnabled
+        notifPrefs.vibrationEnabled,
+        notifPrefs.selectedRingtone === "custom" || notifPrefs.customAudioUrl ? notifPrefs.customAudioUrl : undefined
       );
-      if (isRinging) {
+      if (triggeredId) {
         setIsAlarmRinging(true);
         triggerDeviceVibration([400, 200, 400, 200, 600]);
+        // Automatically deselect / disable the triggered scheduled alarm so it turns off and doesn't repeat
+        setNotifPrefs((prev) => {
+          const updatedReminders = prev.reminders.map((r) =>
+            r.id === triggeredId ? { ...r, enabled: false } : r
+          );
+          const updated = { ...prev, reminders: updatedReminders };
+          saveNotificationPreferences(updated);
+          return updated;
+        });
       }
     }, 15000); // Check every 15s
 
@@ -229,7 +288,7 @@ export const App: React.FC = () => {
             profile={profile}
             notifPrefs={notifPrefs}
             prs={prs}
-            onStartWorkout={() => setIsWorkoutMode(true)}
+            onStartWorkout={() => setShowStartWorkoutModal(true)}
             onToggleExerciseSet={handleToggleExerciseSetInDashboard}
             onOpenWorkoutsBuilder={() => setActiveTab("workouts")}
             onOpenTimers={() => setActiveTab("timers")}
@@ -259,7 +318,7 @@ export const App: React.FC = () => {
           />
         );
       case "timers":
-        return <TimersView />;
+        return <TimersView notifPrefs={notifPrefs} />;
       case "progress":
         return (
           <ProgressView
@@ -282,7 +341,7 @@ export const App: React.FC = () => {
           <CalendarView
             schedule={schedule}
             workoutLogs={workoutLogs}
-            onStartWorkout={() => setIsWorkoutMode(true)}
+            onStartWorkout={() => setShowStartWorkoutModal(true)}
           />
         );
       case "ai":
@@ -310,18 +369,89 @@ export const App: React.FC = () => {
   // If Workout Mode is active, render Workout Mode screen directly
   if (isWorkoutMode) {
     return (
-      <WorkoutModeView
-        workoutPlan={todayPlan}
-        prs={prs}
-        onFinishWorkout={handleFinishWorkout}
-        onExitWorkout={() => setIsWorkoutMode(false)}
-        onAddNewPR={handleAddPR}
-      />
+      <div className="relative">
+        {(isAudioActive || isAlarmRinging) && (
+          <div className="sticky top-0 z-50 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-3 shadow-2xl flex items-center justify-between gap-3 border-b-2 border-white/20 animate-pulse">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-black/30 rounded-xl flex-shrink-0">
+                <Volume2 className="w-6 h-6 text-yellow-300 animate-bounce" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-200">
+                  🔔 ALARM SOUND IS PLAYING
+                </div>
+                <p className="text-[11px] text-white/90 truncate">
+                  Tap button to immediately stop and silence the alarm audio.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleStopAlarmSound}
+              className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg flex items-center gap-2 transition flex-shrink-0 cursor-pointer border border-black/20"
+              id="workout-stop-sound-btn"
+            >
+              <Square className="w-4 h-4 fill-black" />
+              <span>STOP ALARM</span>
+            </button>
+          </div>
+        )}
+        <WorkoutModeView
+          workoutPlan={todayPlan}
+          prs={prs}
+          onFinishWorkout={handleFinishWorkout}
+          onExitWorkout={() => setIsWorkoutMode(false)}
+          onAddNewPR={handleAddPR}
+          notifPrefs={notifPrefs}
+          customRestSec={sessionCustomRestSec}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-lime-400 selection:text-black">
+    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-lime-400 selection:text-black relative">
+      {/* Universal Floating Stop Sound/Alarm Banner (Shows whenever audio is playing on desktop or mobile) */}
+      {(isAudioActive || isAlarmRinging) && (
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-3 shadow-2xl flex items-center justify-between gap-3 border-b-2 border-white/20 animate-pulse">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-black/30 rounded-xl flex-shrink-0">
+              <Volume2 className="w-6 h-6 text-yellow-300 animate-bounce" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-200 flex items-center gap-2">
+                <span>🔔 ALARM SOUND IS PLAYING</span>
+              </div>
+              <p className="text-[11px] text-white/90 truncate">
+                Tap button to immediately stop and silence the alarm audio.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleStopAlarmSound}
+            className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg flex items-center gap-2 transition flex-shrink-0 cursor-pointer border border-black/20"
+            id="global-stop-sound-btn"
+          >
+            <Square className="w-4 h-4 fill-black" />
+            <span>STOP ALARM</span>
+          </button>
+        </div>
+      )}
+
+      {/* Start Workout Session Dialogue Box Modal */}
+      {showStartWorkoutModal && (
+        <StartWorkoutModal
+          workoutPlan={todayPlan}
+          onConfirmStart={(customRestSec) => {
+            setSessionCustomRestSec(customRestSec);
+            setShowStartWorkoutModal(false);
+            setIsWorkoutMode(true);
+          }}
+          onClose={() => setShowStartWorkoutModal(false)}
+        />
+      )}
+
       {/* Onboarding Welcome Modal */}
       {showOnboarding && (
         <OnboardingModal
@@ -369,15 +499,12 @@ export const App: React.FC = () => {
           <Header
             profile={profile}
             notifPrefs={notifPrefs}
-            onStartWorkout={() => setIsWorkoutMode(true)}
+            onStartWorkout={() => setShowStartWorkoutModal(true)}
             onOpenReminders={() => setActiveTab("reminders")}
             onOpenAI={() => setActiveTab("ai")}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             activeAlarmPlaying={isAlarmRinging}
-            onStopAlarm={() => {
-              stopSynthSound();
-              setIsAlarmRinging(false);
-            }}
+            onStopAlarm={handleStopAlarmSound}
           />
 
           <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
@@ -390,7 +517,7 @@ export const App: React.FC = () => {
       <BottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onStartWorkout={() => setIsWorkoutMode(true)}
+        onStartWorkout={() => setShowStartWorkoutModal(true)}
       />
     </div>
   );

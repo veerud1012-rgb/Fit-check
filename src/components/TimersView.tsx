@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Play, Pause, RotateCcw, Clock, Volume2, Flag } from "lucide-react";
-import { playSynthSound } from "../utils/audioSynth";
+import { Play, Pause, RotateCcw, Clock, Volume2, Flag, Square, Bell } from "lucide-react";
+import { playRingtoneFromPrefs, stopSynthSound } from "../utils/audioSynth";
 import { triggerDeviceVibration } from "../utils/notifications";
+import { NotificationPreferences } from "../types";
 
-export const TimersView: React.FC = () => {
+interface TimersViewProps {
+  notifPrefs?: NotificationPreferences;
+}
+
+export const TimersView: React.FC<TimersViewProps> = ({ notifPrefs }) => {
   const [activeTab, setActiveTab] = useState<"countdown" | "stopwatch">("countdown");
 
   // Countdown Timer state
   const [countdownSec, setCountdownSec] = useState(90);
   const [initialCountdown, setInitialCountdown] = useState(90);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [isTimerAlarmActive, setIsTimerAlarmActive] = useState(false);
 
   // Stopwatch state
   const [stopwatchSec, setStopwatchSec] = useState(0);
@@ -25,13 +31,14 @@ export const TimersView: React.FC = () => {
       }, 1000);
     } else if (isCountdownActive && countdownSec === 0) {
       setIsCountdownActive(false);
-      playSynthSound("rest_complete", 0.9);
+      setIsTimerAlarmActive(true);
+      playRingtoneFromPrefs(notifPrefs, "rest_complete");
       triggerDeviceVibration([300, 100, 300, 100, 500]);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isCountdownActive, countdownSec]);
+  }, [isCountdownActive, countdownSec, notifPrefs]);
 
   // Stopwatch Interval
   useEffect(() => {
@@ -114,8 +121,21 @@ export const TimersView: React.FC = () => {
               {formatCountdown(countdownSec)}
             </div>
             {countdownSec === 0 && (
-              <div className="mt-3 px-4 py-2 rounded-xl bg-lime-400/20 border border-lime-400 text-lime-300 font-extrabold text-sm animate-pulse inline-block">
-                🎉 REST COMPLETE! TIME FOR NEXT SET!
+              <div className="mt-4 p-5 rounded-2xl bg-red-950/80 border-2 border-red-500 space-y-3 animate-pulse">
+                <div className="flex items-center justify-center gap-2 text-red-300 font-black text-sm uppercase">
+                  <Volume2 className="w-5 h-5 text-yellow-300 animate-bounce" />
+                  <span>REST COMPLETE! ALARM IS RINGING</span>
+                </div>
+                <button
+                  onClick={() => {
+                    stopSynthSound();
+                    setIsTimerAlarmActive(false);
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-xl flex items-center justify-center gap-2 mx-auto transition active:scale-95"
+                >
+                  <Square className="w-4 h-4 fill-white" />
+                  <span>STOP ALARM SOUND NOW</span>
+                </button>
               </div>
             )}
           </div>

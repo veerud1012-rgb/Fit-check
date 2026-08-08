@@ -15,10 +15,11 @@ import {
   Plus,
   Minus,
   Dumbbell,
+  Square,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { WorkoutPlan, WorkoutExercise, SetData, PersonalRecord } from "../types";
-import { playSynthSound } from "../utils/audioSynth";
+import { WorkoutPlan, WorkoutExercise, SetData, PersonalRecord, NotificationPreferences } from "../types";
+import { playRingtoneFromPrefs, stopSynthSound } from "../utils/audioSynth";
 import { triggerDeviceVibration } from "../utils/notifications";
 import { ExerciseCard } from "./ExerciseCard";
 import { ExerciseDetailModal } from "./ExerciseDetailModal";
@@ -30,6 +31,8 @@ interface WorkoutModeViewProps {
   onFinishWorkout: (completedPlan: WorkoutPlan, durationMin: number, volumeKg: number) => void;
   onExitWorkout: () => void;
   onAddNewPR?: (pr: PersonalRecord) => void;
+  notifPrefs?: NotificationPreferences;
+  customRestSec?: number;
 }
 
 export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
@@ -38,6 +41,8 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
   onFinishWorkout,
   onExitWorkout,
   onAddNewPR,
+  notifPrefs,
+  customRestSec,
 }) => {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [exercisesState, setExercisesState] = useState<WorkoutExercise[]>(
@@ -78,7 +83,7 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
       }, 1000);
     } else if (isRestTimerActive && restTimeSec === 0) {
       setIsRestTimerActive(false);
-      playSynthSound("rest_complete", 0.9);
+      playRingtoneFromPrefs(notifPrefs, "rest_complete");
       triggerDeviceVibration([200, 100, 200]);
     }
     return () => {
@@ -160,7 +165,7 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
       }
 
       // Auto start rest timer
-      const rest = currentExercise.restSec || 90;
+      const rest = customRestSec || currentExercise.restSec || 90;
       setRestTimeSec(rest);
       setRestTimerInitial(rest);
       setIsRestTimerActive(true);
@@ -385,6 +390,21 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
           <div className="text-5xl font-black font-mono tracking-wider text-lime-400">
             {formatTime(restTimeSec)}
           </div>
+          {restTimeSec === 0 && (
+            <div className="mt-3 p-3 bg-red-950/80 border border-red-500 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 animate-pulse">
+              <span className="text-xs font-black text-red-300 uppercase flex items-center gap-1.5">
+                <Volume2 className="w-4 h-4 text-yellow-300 animate-bounce" />
+                <span>Rest Time Ended! Sound Playing</span>
+              </span>
+              <button
+                onClick={() => stopSynthSound()}
+                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-xl shadow flex items-center gap-1.5 transition active:scale-95"
+              >
+                <Square className="w-3.5 h-3.5 fill-white" />
+                <span>STOP ALARM</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Quick Adjust Buttons */}
@@ -409,7 +429,7 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
           </button>
           <button
             onClick={() => {
-              setRestTimeSec(currentExercise.restSec || 90);
+              setRestTimeSec(customRestSec || currentExercise.restSec || 90);
               setIsRestTimerActive(true);
             }}
             className="py-2 bg-zinc-800 hover:bg-zinc-750 text-amber-400 rounded-xl border border-white/5"
@@ -424,7 +444,7 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
             className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
           >
             {isRestTimerActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span>{isRestTimerActive ? "PAUSE REST" : "START REST"}</span>
+            <span>{isRestTimerActive ? "PAUSE REST" : "START WORKOUT"}</span>
           </button>
           <button
             onClick={() => setIsRestTimerActive(false)}

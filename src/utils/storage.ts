@@ -49,10 +49,23 @@ export function saveProfile(profile: UserProfile): void {
   }
 }
 
+import {
+  saveCustomAudioToIDB,
+  loadCustomAudioFromIDB,
+  removeCustomAudioFromIDB,
+} from "./audioStorage";
+
 export function loadNotifPrefs(): NotificationPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.NOTIF_PREFS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Clean up inline base64 if present in old localStorage keys
+      if (parsed.customAudioUrl && parsed.customAudioUrl.length > 1000) {
+        delete parsed.customAudioUrl;
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error("Error loading notification preferences:", e);
   }
@@ -61,7 +74,20 @@ export function loadNotifPrefs(): NotificationPreferences {
 
 export function saveNotifPrefs(prefs: NotificationPreferences): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.NOTIF_PREFS, JSON.stringify(prefs));
+    // Separate heavy audio data URL from metadata to preserve localStorage quota
+    const { customAudioUrl, ...metadataPrefs } = prefs;
+    
+    // Save lightweight metadata to localStorage
+    localStorage.setItem(STORAGE_KEYS.NOTIF_PREFS, JSON.stringify(metadataPrefs));
+
+    // Persist audio data to IndexedDB
+    if (customAudioUrl) {
+      saveCustomAudioToIDB(customAudioUrl).catch((err) => {
+        console.warn("Failed to persist custom audio to IndexedDB:", err);
+      });
+    } else {
+      removeCustomAudioFromIDB().catch(() => {});
+    }
   } catch (e) {
     console.error("Error saving notification preferences:", e);
   }
