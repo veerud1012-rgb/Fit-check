@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import confetti from "canvas-confetti";
 import {
   Play,
   Flame,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { WorkoutPlan, UserProfile, NotificationPreferences, PersonalRecord } from "../types";
 import { getWorkoutImage } from "../utils/workoutImages";
+import { triggerDeviceVibration } from "../utils/notifications";
 
 interface DashboardViewProps {
   todayPlan: WorkoutPlan;
@@ -31,16 +33,74 @@ interface DashboardViewProps {
   onOpenLibrary: () => void;
 }
 
+interface FireToast {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+}
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   todayPlan,
   profile,
   notifPrefs,
   onStartWorkout,
+  onToggleExerciseSet,
   onOpenWorkoutsBuilder,
   onOpenReminders,
   onOpenProgress,
   onOpenAI,
 }) => {
+  const [fireToasts, setFireToasts] = useState<FireToast[]>([]);
+
+  // Fire burst confetti effect
+  const triggerFireEffect = (x?: number, y?: number) => {
+    const originX = x && window.innerWidth ? x / window.innerWidth : 0.5;
+    const originY = y && window.innerHeight ? y / window.innerHeight : 0.5;
+
+    confetti({
+      particleCount: 40,
+      spread: 70,
+      startVelocity: 35,
+      origin: { x: originX, y: originY },
+      colors: ["#a3e635", "#ff5500", "#ffaa00", "#ff2200", "#ffffff"],
+      shapes: ["circle", "square"],
+      ticks: 120,
+      gravity: 0.9,
+      scalar: 1.1,
+    });
+  };
+
+  const handleSetClick = (
+    exerciseId: string,
+    setId: string,
+    currentlyCompleted: boolean,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    onToggleExerciseSet(exerciseId, setId);
+
+    if (!currentlyCompleted) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX || rect.left + rect.width / 2;
+      const clickY = e.clientY || rect.top;
+
+      triggerFireEffect(clickX, clickY);
+      triggerDeviceVibration([80, 40, 80]);
+
+      const newToast: FireToast = {
+        id: `${exerciseId}_${setId}_${Date.now()}`,
+        x: clickX,
+        y: clickY - 20,
+        text: "SET COMPLETED! 🔥",
+      };
+
+      setFireToasts((prev) => [...prev, newToast]);
+      setTimeout(() => {
+        setFireToasts((prev) => prev.filter((t) => t.id !== newToast.id));
+      }, 1200);
+    }
+  };
+
   // Calculate exercise completion statistics
   const totalExercises = todayPlan.exercises.length;
   let completedExercises = 0;
@@ -56,7 +116,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activeReminder = notifPrefs.reminders.find((r) => r.enabled);
 
   return (
-    <div className="space-y-5 pb-20 max-w-xl mx-auto">
+    <div className="space-y-5 pb-20 max-w-xl mx-auto relative">
+      {/* Floating Fire Success Toast */}
+      {fireToasts.map((toast) => (
+        <div
+          key={toast.id}
+          className="fixed z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-lime-400 text-black font-black text-xs shadow-[0_0_20px_rgba(255,85,0,0.8)] animate-bounce"
+          style={{ left: toast.x, top: toast.y }}
+        >
+          <Flame className="w-4 h-4 fill-black animate-pulse" />
+          <span>{toast.text}</span>
+        </div>
+      ))}
       {/* Top Welcome Greeting Row */}
       <div className="flex items-center justify-between">
         <div>
@@ -122,7 +193,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border border-lime-400/30 bg-zinc-900 shadow-xl flex items-center justify-center p-1">
                 <img
-                  src={getWorkoutImage(todayPlan.workoutName, todayPlan.muscleGroups)}
+                  src={todayPlan.customImageUrl || getWorkoutImage(todayPlan.workoutName, todayPlan.muscleGroups)}
                   alt={todayPlan.workoutName}
                   className="w-full h-full object-cover rounded-xl"
                 />
@@ -216,7 +287,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Today's Exercises Section */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-extrabold text-white">Today's Exercises</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-white">Today's Exercises</h3>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-lime-400/10 text-lime-400 border border-lime-400/20">
+              {completedExercises}/{totalExercises} Done
+            </span>
+          </div>
           <button
             onClick={onOpenWorkoutsBuilder}
             className="text-xs font-extrabold text-lime-400 hover:underline cursor-pointer"
@@ -225,7 +301,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {todayPlan.exercises.map((exercise, index) => {
             const isCompleted =
               exercise.sets.length > 0 && exercise.sets.every((s) => s.completed);
@@ -233,53 +309,100 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             return (
               <div
                 key={exercise.id}
-                className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 flex items-center justify-between gap-3 hover:border-lime-400/30 transition"
+                className={`p-4 rounded-2xl bg-[#12141c] border transition-all duration-300 space-y-3 ${
+                  isCompleted
+                    ? "border-lime-400/50 shadow-[0_0_15px_rgba(163,230,53,0.15)] bg-gradient-to-br from-[#12141c] to-lime-950/20"
+                    : "border-white/10 hover:border-lime-400/30"
+                }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Number Badge */}
-                  <span
-                    className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center flex-shrink-0 ${
-                      isCompleted
-                        ? "bg-lime-400 text-black"
-                        : "bg-zinc-800 text-zinc-300 border border-white/10"
-                    }`}
-                  >
-                    {index + 1}
-                  </span>
+                {/* Header Row */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center flex-shrink-0 ${
+                        isCompleted
+                          ? "bg-lime-400 text-black shadow-md shadow-lime-400/20"
+                          : "bg-zinc-800 text-zinc-300 border border-white/10"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
 
-                  {/* Image / Icon */}
-                  {exercise.imageUrl ? (
-                    <img
-                      src={exercise.imageUrl}
-                      alt={exercise.name}
-                      className="w-12 h-12 rounded-xl object-cover border border-white/10 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center text-lime-400 flex-shrink-0">
-                      <Dumbbell className="w-6 h-6" />
+                    {exercise.imageUrl ? (
+                      <img
+                        src={exercise.imageUrl}
+                        alt={exercise.name}
+                        className="w-11 h-11 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center text-lime-400 flex-shrink-0">
+                        <Dumbbell className="w-5 h-5" />
+                      </div>
+                    )}
+
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-white text-sm truncate flex items-center gap-1.5">
+                        <span>{exercise.name}</span>
+                        {isCompleted && (
+                          <Flame className="w-4 h-4 text-orange-500 fill-orange-500 animate-pulse" />
+                        )}
+                      </h4>
+                      <p className="text-xs text-zinc-400 font-medium">
+                        Target: {exercise.targetMuscle} • {exercise.sets.length || exercise.setsCount} Sets
+                      </p>
                     </div>
-                  )}
-
-                  {/* Title & Specs */}
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-white text-sm truncate">
-                      {exercise.name}
-                    </h4>
-                    <p className="text-xs text-zinc-400 font-medium">
-                      {exercise.setsCount} Sets • {exercise.targetReps} Reps
-                    </p>
                   </div>
+
+                  {isCompleted && (
+                    <span className="text-[10px] font-black uppercase text-lime-400 bg-lime-400/10 border border-lime-400/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Completed</span>
+                    </span>
+                  )}
                 </div>
 
-                {/* Status Checkmark Icon */}
-                <div className="flex-shrink-0">
-                  {isCompleted ? (
-                    <div className="w-6 h-6 rounded-full bg-lime-400 text-black flex items-center justify-center shadow-md shadow-lime-400/20">
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-zinc-700 hover:border-lime-400 transition" />
-                  )}
+                {/* Interactive Sets Checklist with Fire Effects */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                  {exercise.sets.map((setItem) => (
+                    <button
+                      key={setItem.id}
+                      onClick={(e) =>
+                        handleSetClick(exercise.id, setItem.id, !!setItem.completed, e)
+                      }
+                      className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-bold transition-all duration-200 cursor-pointer ${
+                        setItem.completed
+                          ? "bg-gradient-to-r from-lime-400/20 via-emerald-500/15 to-orange-500/10 border-lime-400 text-white shadow-[0_0_12px_rgba(163,230,53,0.2)]"
+                          : "bg-zinc-900/80 hover:bg-zinc-800 border-white/5 text-zinc-300 hover:border-lime-400/40"
+                      }`}
+                      id={`dashboard-set-btn-${exercise.id}-${setItem.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black ${
+                            setItem.completed ? "bg-lime-400 text-black" : "bg-zinc-800 text-zinc-400"
+                          }`}
+                        >
+                          #{setItem.setNumber}
+                        </span>
+                        <span>
+                          {setItem.weightKg} kg × {setItem.reps} reps
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {setItem.completed ? (
+                          <>
+                            <Flame className="w-3.5 h-3.5 text-orange-400 fill-orange-400 animate-bounce" />
+                            <div className="w-5 h-5 rounded-full bg-lime-400 text-black flex items-center justify-center shadow">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border-2 border-zinc-700 hover:border-lime-400 transition" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             );

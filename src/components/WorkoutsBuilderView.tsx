@@ -12,8 +12,12 @@ import {
   X,
   Clock,
   Sparkles,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 import { WorkoutPlan, WorkoutExercise, ExerciseItem, MuscleGroup, DayOfWeek } from "../types";
+import { getWorkoutImage } from "../utils/workoutImages";
 
 interface WorkoutsBuilderViewProps {
   schedule: WorkoutPlan[];
@@ -65,6 +69,29 @@ export const WorkoutsBuilderView: React.FC<WorkoutsBuilderViewProps> = ({
       ? editingDay.muscleGroups.filter((m) => m !== muscle)
       : [...editingDay.muscleGroups, muscle];
     setEditingDay({ ...editingDay, muscleGroups: updated });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingDay) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setEditingDay({
+          ...editingDay,
+          customImageUrl: reader.result,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCustomImage = () => {
+    if (!editingDay) return;
+    const copy = { ...editingDay };
+    delete copy.customImageUrl;
+    setEditingDay(copy);
   };
 
   const handleAddExerciseToPlan = () => {
@@ -161,89 +188,124 @@ export const WorkoutsBuilderView: React.FC<WorkoutsBuilderViewProps> = ({
       </div>
 
       {/* Weekly Days List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {schedule.map((plan) => (
           <div
             key={plan.day}
-            className={`p-5 rounded-3xl border transition-all flex flex-col justify-between gap-4 ${
+            className={`rounded-3xl border transition-all duration-300 overflow-hidden grid grid-cols-12 ${
               plan.isRestDay
                 ? "bg-zinc-950/80 border-white/5 opacity-80"
-                : "bg-zinc-900 border-white/10 hover:border-lime-400/30"
+                : "bg-zinc-900 border-white/10 hover:border-lime-400/30 shadow-xl"
             }`}
           >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black tracking-widest text-lime-400 uppercase">
-                  {plan.day}
-                </span>
-                {plan.isRestDay ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold flex items-center gap-1">
-                    <BedDouble className="w-3 h-3" /> REST DAY
+            {/* Left Split: Full Height Image Card */}
+            <div className="col-span-5 sm:col-span-4 relative overflow-hidden bg-zinc-950 flex items-center justify-center border-r border-white/10 group min-h-[220px]">
+              {!plan.isRestDay ? (
+                <>
+                  <img
+                    src={plan.customImageUrl || getWorkoutImage(plan.workoutName, plan.muscleGroups)}
+                    alt={plan.workoutName}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 absolute inset-0"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 text-center z-10">
+                    <span className="text-[10px] font-black text-lime-400 uppercase tracking-widest bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-lime-400/30 shadow-md">
+                      {plan.day.slice(0, 3)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-4 text-center h-full w-full bg-gradient-to-br from-zinc-900 to-zinc-950">
+                  <BedDouble className="w-10 h-10 text-blue-400 mb-2" />
+                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                    REST DAY
                   </span>
-                ) : (
-                  <span className="text-xs text-zinc-400 font-bold">
-                    {plan.exercises.length} Exercises
-                  </span>
-                )}
-              </div>
-
-              <h3 className="text-lg font-black text-white uppercase">{plan.workoutName}</h3>
-
-              {/* Muscle Group Chips */}
-              <div className="flex flex-wrap gap-1.5">
-                {plan.muscleGroups.map((m) => (
-                  <span
-                    key={m}
-                    className="px-2 py-0.5 rounded-lg bg-zinc-800 border border-white/5 text-[10px] font-bold text-zinc-300"
-                  >
-                    {m}
-                  </span>
-                ))}
-              </div>
-
-              {/* Exercises Preview List */}
-              {!plan.isRestDay && (
-                <div className="space-y-1.5 pt-2 border-t border-white/5 text-xs text-zinc-400">
-                  {plan.exercises.slice(0, 4).map((ex, idx) => (
-                    <div key={ex.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 truncate max-w-[200px]">
-                        <span className="text-zinc-400 text-[10px] font-bold">{idx + 1}.</span>
-                        {ex.imageUrl ? (
-                          <img
-                            src={ex.imageUrl}
-                            alt={ex.name}
-                            className="w-6 h-6 object-cover rounded-md border border-lime-400/30 flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center flex-shrink-0 text-lime-400">
-                            <Dumbbell className="w-3 h-3" />
-                          </div>
-                        )}
-                        <span className="text-zinc-200 font-medium truncate">
-                          {ex.name}
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono text-zinc-400">{ex.setsCount}×{ex.targetReps}</span>
-                    </div>
-                  ))}
-                  {plan.exercises.length > 4 && (
-                    <div className="text-[10px] text-lime-400 font-bold italic">
-                      + {plan.exercises.length - 4} more exercises
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-              <button
-                onClick={() => handleOpenEdit(plan)}
-                className="flex-1 py-2.5 bg-lime-400 hover:bg-lime-300 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>EDIT ROUTINE</span>
-              </button>
+            {/* Right Split: Workout Name & Details */}
+            <div className="col-span-7 sm:col-span-8 p-4 sm:p-5 flex flex-col justify-between space-y-3">
+              <div className="space-y-2.5">
+                {/* Header: Day & Exercise Count */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-black tracking-widest text-lime-400 uppercase">
+                    {plan.day}
+                  </span>
+                  {plan.isRestDay ? (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold flex items-center gap-1">
+                      <BedDouble className="w-3 h-3" /> REST
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 font-bold bg-zinc-800/80 px-2 py-0.5 rounded-md border border-white/5">
+                      {plan.exercises.length} Exercises
+                    </span>
+                  )}
+                </div>
+
+                {/* Workout Title & Muscle Tags */}
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white uppercase leading-snug">
+                    {plan.workoutName}
+                  </h3>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {plan.muscleGroups.map((m) => (
+                      <span
+                        key={m}
+                        className="px-2 py-0.5 rounded-md bg-zinc-800 border border-white/5 text-[10px] font-bold text-zinc-300"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Exercises Preview List */}
+                {!plan.isRestDay && (
+                  <div className="space-y-1.5 pt-2 border-t border-white/5 text-xs text-zinc-400">
+                    {plan.exercises.slice(0, 4).map((ex, idx) => (
+                      <div key={ex.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-zinc-500 text-[10px] font-bold">{idx + 1}.</span>
+                          {ex.imageUrl ? (
+                            <img
+                              src={ex.imageUrl}
+                              alt={ex.name}
+                              className="w-5 h-5 object-cover rounded border border-lime-400/30 flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-5 h-5 rounded bg-zinc-800 border border-white/10 flex items-center justify-center flex-shrink-0 text-lime-400">
+                              <Dumbbell className="w-2.5 h-2.5" />
+                            </div>
+                          )}
+                          <span className="text-zinc-200 font-medium truncate text-[11px]">
+                            {ex.name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-zinc-400 flex-shrink-0">
+                          {ex.setsCount}×{ex.targetReps}
+                        </span>
+                      </div>
+                    ))}
+                    {plan.exercises.length > 4 && (
+                      <div className="text-[10px] text-lime-400 font-bold italic pt-0.5">
+                        + {plan.exercises.length - 4} more exercises
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-2 border-t border-white/5">
+                <button
+                  onClick={() => handleOpenEdit(plan)}
+                  className="w-full py-2.5 bg-lime-400 hover:bg-lime-300 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>EDIT ROUTINE</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -300,6 +362,67 @@ export const WorkoutsBuilderView: React.FC<WorkoutsBuilderViewProps> = ({
                     className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-sm font-bold text-white focus:outline-none focus:border-lime-400"
                     placeholder="e.g. Chest + Shoulder"
                   />
+                </div>
+
+                {/* Workout Card Image Selector */}
+                <div className="space-y-2 p-3.5 rounded-2xl bg-zinc-950 border border-white/10">
+                  <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-lime-400" />
+                    <span>Workout Card Image (Left Split)</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-lime-400/30 bg-black flex-shrink-0 relative group">
+                      <img
+                        src={
+                          editingDay.customImageUrl ||
+                          getWorkoutImage(editingDay.workoutName, editingDay.muscleGroups)
+                        }
+                        alt="Workout Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      {editingDay.customImageUrl && (
+                        <span className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                          <span className="text-[9px] font-black text-lime-400 uppercase">CUSTOM</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="px-3 py-2 bg-lime-400 hover:bg-lime-300 text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>UPLOAD IMAGE</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {editingDay.customImageUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveCustomImage}
+                            className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-red-400 font-bold text-xs rounded-xl flex items-center gap-1 border border-white/5 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>RESET DEFAULT</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        value={editingDay.customImageUrl || ""}
+                        onChange={(e) =>
+                          setEditingDay({ ...editingDay, customImageUrl: e.target.value })
+                        }
+                        placeholder="Or paste image URL (https://...)"
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-lime-400"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Target Muscle Groups Select */}

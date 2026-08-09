@@ -2,7 +2,7 @@ export const WORKOUT_IMAGES: Record<string, string> = {
   chest_shoulder: "https://cdn.phototourl.com/free/2026-08-08-e08acc05-8ea6-4c26-97a4-eab4ba20b233.webp",
   legs: "https://cdn.phototourl.com/free/2026-08-08-f7a0fbb8-9e61-4214-9fdd-61ec004ac860.webp",
   cardio_abs: "https://cdn.phototourl.com/free/2026-08-08-916315f0-450f-441c-94d8-f9d89127a9eb.webp",
-  biceps_triceps: "https://cdn.phototourl.com/free/2026-08-08-23e83750-d460-4e2f-b2a6-56319e2048fb.webp",
+  biceps_triceps: "https://cdn.phototourl.com/free/2026-08-09-6935c3c5-00cf-4b14-b2c7-b26cec3c1236.webp",
   neck: "https://cdn.phototourl.com/free/2026-08-08-364f8209-65dc-4837-85c7-9d799ffc47c4.webp",
   back: "https://cdn.phototourl.com/free/2026-08-08-46b612d5-7d67-430b-9eee-33238716fb49.webp",
 };

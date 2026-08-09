@@ -94,6 +94,7 @@ export interface WorkoutPlan {
   isRestDay: boolean;
   exercises: WorkoutExercise[];
   estimatedMinutes: number;
+  customImageUrl?: string;
 }
 
 export interface WorkoutLog {

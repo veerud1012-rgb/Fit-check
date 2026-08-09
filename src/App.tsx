@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   getUserProfile,
   saveUserProfile,
@@ -497,7 +498,17 @@ export const App: React.FC = () => {
           />
 
           <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
-            {renderTabContent()}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+              >
+                {renderTabContent()}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>
