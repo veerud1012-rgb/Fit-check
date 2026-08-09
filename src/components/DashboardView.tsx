@@ -6,18 +6,15 @@ import {
   Circle,
   Clock,
   ChevronRight,
-  Plus,
   Bell,
-  LineChart,
-  Bot,
-  Sparkles,
-  Trophy,
+  BarChart2,
+  Check,
   Dumbbell,
-  Activity,
+  Sparkles,
   BedDouble,
-  RotateCcw,
 } from "lucide-react";
-import { WorkoutPlan, WorkoutExercise, UserProfile, NotificationPreferences, PersonalRecord } from "../types";
+import { WorkoutPlan, UserProfile, NotificationPreferences, PersonalRecord } from "../types";
+import { getWorkoutImage } from "../utils/workoutImages";
 
 interface DashboardViewProps {
   todayPlan: WorkoutPlan;
@@ -38,18 +35,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   todayPlan,
   profile,
   notifPrefs,
-  prs,
   onStartWorkout,
-  onToggleExerciseSet,
   onOpenWorkoutsBuilder,
-  onOpenTimers,
   onOpenReminders,
   onOpenProgress,
   onOpenAI,
-  onOpenLibrary,
 }) => {
-  const currentDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
-
   // Calculate exercise completion statistics
   const totalExercises = todayPlan.exercises.length;
   let completedExercises = 0;
@@ -62,317 +53,240 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const progressPercent =
     totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
 
-  // Muscle Recovery Status Map logic based on recent workouts
-  const muscleRecoveryStatus: { name: string; status: "Ready" | "Recovering" | "Trained"; color: string }[] = [
-    { name: "Chest", status: todayPlan.muscleGroups.includes("Chest") ? "Trained" : "Recovering", color: "bg-red-500" },
-    { name: "Shoulders", status: todayPlan.muscleGroups.includes("Shoulders") ? "Trained" : "Recovering", color: "bg-amber-500" },
-    { name: "Back", status: "Ready", color: "bg-lime-400" },
-    { name: "Legs", status: "Ready", color: "bg-lime-400" },
-    { name: "Arms", status: todayPlan.muscleGroups.includes("Biceps") || todayPlan.muscleGroups.includes("Triceps") ? "Trained" : "Ready", color: "bg-lime-400" },
-    { name: "Abs", status: "Ready", color: "bg-lime-400" },
-  ];
-
   const activeReminder = notifPrefs.reminders.find((r) => r.enabled);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. Main Question & Motivation Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-black p-6 border border-white/10 shadow-2xl">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-lime-400 to-transparent pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400/10 border border-lime-400/30 text-lime-400 font-bold text-xs uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>TODAY'S WORKOUT ADVISOR</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              “Aaj gym mein kya workout karna hai?”
-            </h2>
-            <p className="text-zinc-400 text-sm max-w-xl">
-              Today is <span className="text-white font-bold">{currentDayName.toUpperCase()}</span>. Your schedule calls for{" "}
-              <span className="text-lime-400 font-bold">
-                {todayPlan.isRestDay ? "REST DAY 😴" : todayPlan.workoutName.toUpperCase()}
-              </span>
-              .
-            </p>
-          </div>
+    <div className="space-y-5 pb-20 max-w-xl mx-auto">
+      {/* Top Welcome Greeting Row */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Good Morning, <br className="sm:hidden" />
+            <span className="text-lime-400">{profile.name}! 💪</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-0.5">
+            Let's crush your goals today.
+          </p>
+        </div>
 
-          {!todayPlan.isRestDay && (
-            <button
-              onClick={onStartWorkout}
-              className="flex items-center justify-center gap-3 bg-lime-400 hover:bg-lime-300 text-black font-extrabold text-base px-6 py-4 rounded-2xl shadow-xl shadow-lime-400/20 active:scale-95 transition"
-              id="dashboard-start-session-btn"
-            >
-              <Play className="w-5 h-5 fill-black" />
-              <span>START WORKOUT SESSION</span>
-            </button>
-          )}
+        {/* User Profile Body Avatar & Bell Notification */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onOpenReminders}
+            className="relative p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-2xl text-zinc-300 transition cursor-pointer"
+          >
+            <Bell className="w-5 h-5" />
+            {activeReminder && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-lime-400 rounded-full ring-2 ring-black" />
+            )}
+          </button>
+          <div className="w-12 h-12 rounded-2xl overflow-hidden border border-lime-400/40 bg-zinc-800 shadow-md flex-shrink-0">
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
+              alt="Veer"
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
       </div>
 
-      {/* 2. Today's Workout Main Card or Rest Day Card */}
+      {/* TODAY'S WORKOUT Main Card */}
       {todayPlan.isRestDay ? (
-        <div className="rounded-3xl bg-gradient-to-b from-zinc-900/90 to-zinc-950 p-8 border border-white/10 text-center space-y-6">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-            <BedDouble className="w-8 h-8" />
+        <div className="rounded-3xl bg-gradient-to-b from-zinc-900 to-zinc-950 p-6 border border-white/10 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <BedDouble className="w-7 h-7" />
           </div>
-          <div className="space-y-2 max-w-md mx-auto">
-            <h3 className="text-2xl font-extrabold text-white">SUNDAY REST DAY 😴</h3>
-            <p className="text-zinc-400 text-sm">
-              “Recovery is where the muscles actually grow.” Give your central nervous system time to adapt and repair.
+          <div>
+            <h3 className="text-xl font-black text-white">SUNDAY REST DAY 😴</h3>
+            <p className="text-zinc-400 text-xs mt-1">
+              Recovery day! Muscle repair and hydration phase active.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-3xl mx-auto pt-2">
-            {[
-              { title: "Hydration", desc: "Drink 3.5L water & electrolytes" },
-              { title: "Light Mobility", desc: "15 min foam rolling & stretching" },
-              { title: "Sleep Hygiene", desc: "Aim for 8+ hours deep rest" },
-              { title: "Protein Intake", desc: "Maintain 1.6-2g protein per kg" },
-            ].map((tip, i) => (
-              <div key={i} className="p-4 rounded-2xl bg-zinc-900/80 border border-white/5 text-left space-y-1">
-                <span className="text-xs font-bold text-lime-400">Recovery Step {i + 1}</span>
-                <div className="text-sm font-semibold text-white">{tip.title}</div>
-                <div className="text-xs text-zinc-400">{tip.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-2">
-            <button
-              onClick={onOpenWorkoutsBuilder}
-              className="inline-flex items-center gap-2 text-xs text-zinc-400 hover:text-white underline underline-offset-4"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Change Sunday to a active workout day in Workout Builder</span>
-            </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Main Today Overview Card */}
-          <div className="rounded-3xl bg-zinc-900/80 border border-white/10 p-6 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-extrabold tracking-widest text-lime-400 uppercase">
-                  TODAY'S SPLIT • {currentDayName.toUpperCase()}
-                </span>
-                <h3 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight mt-1">
-                  {todayPlan.workoutName}
-                </h3>
-                <p className="text-sm text-zinc-400 mt-1 font-medium">
-                  {todayPlan.exercises.length} Exercises • ~{todayPlan.estimatedMinutes} Min Duration
-                </p>
-              </div>
-
-              {/* Progress Ring / Bar */}
-              <div className="sm:w-64 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-zinc-400">Progress</span>
-                  <span className="text-lime-400">{completedExercises} / {totalExercises} Completed ({progressPercent}%)</span>
-                </div>
-                <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden p-0.5 border border-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-lime-500 to-lime-300 rounded-full transition-all duration-500"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
+        <div className="relative overflow-hidden rounded-3xl bg-[#12141c] border border-white/10 p-5 sm:p-6 shadow-2xl space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 flex-1">
+              <span className="text-[10px] font-black tracking-widest text-lime-400 uppercase">
+                TODAY'S WORKOUT
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
+                {todayPlan.workoutName}
+              </h2>
+              <p className="text-xs text-zinc-400 font-semibold">
+                {totalExercises} Exercises • ~{todayPlan.estimatedMinutes} Min
+              </p>
             </div>
 
-            {/* Today's Exercises List */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between text-xs font-bold text-zinc-400 px-1">
-                <span>TODAY'S EXERCISES</span>
-                <button
-                  onClick={onOpenWorkoutsBuilder}
-                  className="text-lime-400 hover:underline flex items-center gap-1"
-                >
-                  <span>Edit Split</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="space-y-2.5">
-                {todayPlan.exercises.map((exercise, index) => {
-                  const isAllCompleted =
-                    exercise.sets.length > 0 && exercise.sets.every((s) => s.completed);
-                  const prMatch = prs.find((pr) => pr.exerciseName.toLowerCase() === exercise.name.toLowerCase());
-
-                  return (
-                    <div
-                      key={exercise.id}
-                      className={`p-4 sm:p-5 rounded-3xl border transition-all ${
-                        isAllCompleted
-                          ? "bg-zinc-950/60 border-lime-500/20 opacity-80"
-                          : "bg-zinc-900 border-white/10 hover:border-lime-400/40"
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                          <span className="flex-shrink-0 w-7 h-7 rounded-xl bg-zinc-800 text-lime-400 font-extrabold text-xs flex items-center justify-center border border-white/5 mt-1">
-                            {index + 1}
-                          </span>
-                          {exercise.imageUrl ? (
-                            <img
-                              src={exercise.imageUrl}
-                              alt={exercise.name}
-                              className="w-20 h-20 sm:w-28 sm:h-28 object-cover rounded-2xl border border-lime-400/40 flex-shrink-0 shadow-lg shadow-black/40"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center flex-shrink-0 text-lime-400">
-                              <Dumbbell className="w-8 h-8 sm:w-10 sm:h-10" />
-                            </div>
-                          )}
-                          <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="font-extrabold text-white text-lg sm:text-xl tracking-tight">{exercise.name}</h4>
-                              {prMatch && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/30 text-amber-400 text-xs font-extrabold">
-                                  <Trophy className="w-3.5 h-3.5" />
-                                  PR: {prMatch.maxWeightKg}kg
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2.5 text-xs sm:text-sm text-zinc-400">
-                              <span className="px-2 py-0.5 rounded-md bg-lime-400/10 border border-lime-400/30 text-lime-400 text-xs font-extrabold uppercase">
-                                {exercise.targetMuscle}
-                              </span>
-                              <span>•</span>
-                              <span className="font-semibold text-zinc-200">{exercise.setsCount} Sets × {exercise.targetReps} Reps</span>
-                              <span>•</span>
-                              <span className="font-semibold text-zinc-200">{exercise.weightKg} kg</span>
-                              <span>•</span>
-                              <span className="flex items-center gap-1 font-mono text-xs">
-                                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                                Rest: {exercise.restSec}s
-                              </span>
-                            </div>
-
-                            {/* Progressive Overload Suggestion */}
-                            <div className="mt-2 text-xs bg-lime-400/5 border border-lime-400/20 text-lime-300 px-3 py-1.5 rounded-xl inline-flex items-center gap-2 font-medium">
-                              <Sparkles className="w-3.5 h-3.5 text-lime-400 flex-shrink-0" />
-                              <span>Overload Tip: Last was {exercise.sets[0]?.previousWeightKg || exercise.weightKg}kg × 10. Try {((exercise.sets[0]?.previousWeightKg || exercise.weightKg) + 2.5)}kg × 8-10.</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Quick Set Completion Status */}
-                        <div className="flex items-center gap-2 flex-shrink-0 pt-2 sm:pt-1">
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider sm:hidden">Sets:</span>
-                          {exercise.sets.map((set) => (
-                            <button
-                              key={set.id}
-                              onClick={() => onToggleExerciseSet(exercise.id, set.id)}
-                              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-bold flex items-center justify-center border transition ${
-                                set.completed
-                                  ? "bg-lime-400 text-black border-lime-400 shadow-md shadow-lime-400/20"
-                                  : "bg-zinc-800 text-zinc-400 border-white/10 hover:border-lime-400/40"
-                              }`}
-                              title={`Set ${set.setNumber}: ${set.weightKg}kg x ${set.reps}`}
-                            >
-                              {set.completed ? "✓" : set.setNumber}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Workout Visual Image */}
+            <div className="flex-shrink-0">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border border-lime-400/30 bg-zinc-900 shadow-xl flex items-center justify-center p-1">
+                <img
+                  src={getWorkoutImage(todayPlan.workoutName, todayPlan.muscleGroups)}
+                  alt={todayPlan.workoutName}
+                  className="w-full h-full object-cover rounded-xl"
+                />
               </div>
             </div>
           </div>
+
+          {/* Progress Bar Row */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-xs font-extrabold">
+              <span className="text-zinc-400">Progress</span>
+              <span className="text-lime-400">
+                {completedExercises} / {totalExercises} Completed ({progressPercent}%)
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden border border-white/5 p-0.5">
+              <div
+                className="h-full bg-lime-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(163,230,53,0.8)]"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Big Lime Start Workout Button */}
+          <button
+            onClick={onStartWorkout}
+            className="w-full py-4 bg-lime-400 hover:bg-lime-300 active:scale-98 text-black font-black text-sm rounded-2xl shadow-xl shadow-lime-400/20 flex items-center justify-center gap-2.5 transition cursor-pointer tracking-wider uppercase mt-2"
+            id="dashboard-start-workout-main-btn"
+          >
+            <Play className="w-5 h-5 fill-black" />
+            <span>START WORKOUT</span>
+          </button>
         </div>
       )}
 
-      {/* 3. Quick Action Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { label: "Add Exercise", icon: <Plus className="w-5 h-5 text-lime-400" />, action: onOpenLibrary },
-          { label: "Start Workout", icon: <Play className="w-5 h-5 text-lime-400" />, action: onStartWorkout },
-          { label: "Rest Timer", icon: <Clock className="w-5 h-5 text-cyan-400" />, action: onOpenTimers },
-          { label: "Set Reminder", icon: <Bell className="w-5 h-5 text-amber-400" />, action: onOpenReminders },
-          { label: "View Progress", icon: <LineChart className="w-5 h-5 text-purple-400" />, action: onOpenProgress },
-          { label: "Ask AI Coach", icon: <Bot className="w-5 h-5 text-emerald-400" />, action: onOpenAI },
-        ].map((item, idx) => (
-          <button
-            key={idx}
-            onClick={item.action}
-            className="p-4 rounded-2xl bg-zinc-900 border border-white/10 hover:border-lime-400/40 hover:bg-zinc-850 flex flex-col items-center justify-center text-center gap-2 transition group"
-          >
-            <div className="p-2.5 rounded-xl bg-zinc-800 border border-white/5 group-hover:scale-110 transition">
-              {item.icon}
+      {/* Next Reminder Card */}
+      <div className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-lime-400/10 border border-lime-400/20 text-lime-400">
+            <Bell className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-zinc-400">Next Reminder</div>
+            <div className="text-xs font-black text-white">
+              {activeReminder ? `Today, ${activeReminder.time}` : "Today, 07:00 PM"}
             </div>
-            <span className="text-xs font-bold text-zinc-200">{item.label}</span>
-          </button>
-        ))}
+          </div>
+        </div>
+        <button
+          onClick={onOpenReminders}
+          className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 border border-white/5 transition cursor-pointer"
+        >
+          Change
+        </button>
       </div>
 
-      {/* 4. Workout Reminder & Muscle Recovery Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Next Workout Reminder Card */}
-        <div className="p-6 rounded-3xl bg-zinc-900 border border-white/10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-              <Bell className="w-4 h-4" />
-              <span>SMART WORKOUT REMINDER</span>
-            </div>
-            <button
-              onClick={onOpenReminders}
-              className="text-xs text-lime-400 hover:underline font-bold"
-            >
-              Configure
-            </button>
+      {/* 3 Stat Metric Cards */}
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 space-y-1 text-center sm:text-left">
+          <div className="p-2 w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 mx-auto sm:mx-0 flex items-center justify-center">
+            <Flame className="w-4 h-4 fill-amber-400" />
           </div>
-
-          {activeReminder ? (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-zinc-900 border border-amber-500/20 flex items-center justify-between">
-              <div>
-                <div className="text-xl font-extrabold text-white">
-                  {activeReminder.time} Today
-                </div>
-                <p className="text-xs text-zinc-400 mt-0.5">{activeReminder.label}</p>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-amber-400/20 text-amber-400 text-xs font-bold">
-                ACTIVE
-              </span>
-            </div>
-          ) : (
-            <div className="p-4 rounded-2xl bg-zinc-800/50 text-center space-y-2">
-              <p className="text-xs text-zinc-400">No active reminder set for today.</p>
-              <button
-                onClick={onOpenReminders}
-                className="text-xs font-bold text-lime-400 hover:underline"
-              >
-                + Set 7:00 PM Reminder
-              </button>
-            </div>
-          )}
+          <div className="text-[10px] font-bold text-zinc-400">Streak</div>
+          <div className="text-base sm:text-lg font-black text-white">
+            {profile.streakDays} <span className="text-xs font-semibold text-zinc-400">Days</span>
+          </div>
         </div>
 
-        {/* Muscle Recovery Map Card */}
-        <div className="p-6 rounded-3xl bg-zinc-900 border border-white/10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-lime-400 font-bold text-sm">
-              <Activity className="w-4 h-4" />
-              <span>MUSCLE RECOVERY MAP</span>
-            </div>
-            <span className="text-[11px] text-zinc-400">Estimated status</span>
+        <div className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 space-y-1 text-center sm:text-left">
+          <div className="p-2 w-8 h-8 rounded-xl bg-lime-400/10 text-lime-400 mx-auto sm:mx-0 flex items-center justify-center">
+            <BarChart2 className="w-4 h-4" />
           </div>
+          <div className="text-[10px] font-bold text-zinc-400">This Week</div>
+          <div className="text-base sm:text-lg font-black text-white">
+            5 <span className="text-xs font-semibold text-zinc-400">Workouts</span>
+          </div>
+        </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
-            {muscleRecoveryStatus.map((m, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-zinc-800/80 border border-white/5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white">{m.name}</span>
-                  <span className={`w-2 h-2 rounded-full ${m.color}`} />
-                </div>
-                <div className="text-[10px] text-zinc-400">{m.status}</div>
-              </div>
-            ))}
+        <div className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 space-y-1 text-center sm:text-left">
+          <div className="p-2 w-8 h-8 rounded-xl bg-cyan-400/10 text-cyan-400 mx-auto sm:mx-0 flex items-center justify-center">
+            <Clock className="w-4 h-4" />
           </div>
+          <div className="text-[10px] font-bold text-zinc-400">Total Time</div>
+          <div className="text-sm sm:text-base font-black text-white">
+            18h 45m
+            <div className="text-[9px] font-medium text-zinc-500">This Month</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Today's Exercises Section */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-extrabold text-white">Today's Exercises</h3>
+          <button
+            onClick={onOpenWorkoutsBuilder}
+            className="text-xs font-extrabold text-lime-400 hover:underline cursor-pointer"
+          >
+            View All
+          </button>
+        </div>
+
+        <div className="space-y-2.5">
+          {todayPlan.exercises.map((exercise, index) => {
+            const isCompleted =
+              exercise.sets.length > 0 && exercise.sets.every((s) => s.completed);
+
+            return (
+              <div
+                key={exercise.id}
+                className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 flex items-center justify-between gap-3 hover:border-lime-400/30 transition"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Number Badge */}
+                  <span
+                    className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center flex-shrink-0 ${
+                      isCompleted
+                        ? "bg-lime-400 text-black"
+                        : "bg-zinc-800 text-zinc-300 border border-white/10"
+                    }`}
+                  >
+                    {index + 1}
+                  </span>
+
+                  {/* Image / Icon */}
+                  {exercise.imageUrl ? (
+                    <img
+                      src={exercise.imageUrl}
+                      alt={exercise.name}
+                      className="w-12 h-12 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center text-lime-400 flex-shrink-0">
+                      <Dumbbell className="w-6 h-6" />
+                    </div>
+                  )}
+
+                  {/* Title & Specs */}
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-white text-sm truncate">
+                      {exercise.name}
+                    </h4>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      {exercise.setsCount} Sets • {exercise.targetReps} Reps
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status Checkmark Icon */}
+                <div className="flex-shrink-0">
+                  {isCompleted ? (
+                    <div className="w-6 h-6 rounded-full bg-lime-400 text-black flex items-center justify-center shadow-md shadow-lime-400/20">
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full border-2 border-zinc-700 hover:border-lime-400 transition" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 };
+

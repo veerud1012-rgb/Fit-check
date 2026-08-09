@@ -23,6 +23,7 @@ import { playRingtoneFromPrefs, stopSynthSound } from "../utils/audioSynth";
 import { triggerDeviceVibration } from "../utils/notifications";
 import { ExerciseCard } from "./ExerciseCard";
 import { ExerciseDetailModal } from "./ExerciseDetailModal";
+import { getWorkoutImage } from "../utils/workoutImages";
 import { ExerciseItem } from "../types";
 
 interface WorkoutModeViewProps {
@@ -257,203 +258,345 @@ export const WorkoutModeView: React.FC<WorkoutModeViewProps> = ({
         })}
       </div>
 
-      {/* Main Active Exercise Header */}
-      <ExerciseCard
-        exercise={{
-          id: currentExercise.id,
-          name: currentExercise.name,
-          targetMuscle: currentExercise.targetMuscle,
-          setsCount: currentExercise.setsCount,
-          targetReps: currentExercise.targetReps,
-          imageUrl: currentExercise.imageUrl,
-          notes: currentExercise.notes,
-        }}
-        layout="left-image"
-        variant="active-workout"
-        isActive={true}
-        stepNumber={currentExerciseIndex + 1}
-        onClick={() => {
-          setDetailModalExercise({
-            id: currentExercise.id,
-            name: currentExercise.name,
-            targetMuscle: currentExercise.targetMuscle,
-            equipment: "Barbell / Dumbbell",
-            difficulty: "Intermediate",
-            defaultSets: currentExercise.setsCount,
-            defaultReps: currentExercise.targetReps,
-            defaultRestSec: currentExercise.restSec,
-            instructions: "Focus on controlled posture and complete range of motion. Keep tension on target muscle.",
-            safetyTips: "Maintain a braced core, keep joints soft at lockout, and control the weight on the descent.",
-            imageUrl: currentExercise.imageUrl,
-          });
-        }}
-        actionLabel="View Exercise Form & PRs"
-      />
-
-      {/* Set Tracker Table - Large Touch Target */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs font-bold text-zinc-400 px-1">
-          <span>SETS & WEIGHT</span>
-          <span>COMPLETED</span>
+      {/* Main Active Exercise View - Matching Screen 2 */}
+      <div className="space-y-4">
+        {/* Exercise Subheader & Info */}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-lime-400">
+              Exercise {currentExerciseIndex + 1} of {exercisesState.length}
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+              <span>{currentExercise.name}</span>
+              <button
+                onClick={() => {
+                  setDetailModalExercise({
+                    id: currentExercise.id,
+                    name: currentExercise.name,
+                    targetMuscle: currentExercise.targetMuscle,
+                    equipment: "Dumbbell",
+                    difficulty: "Intermediate",
+                    defaultSets: currentExercise.setsCount,
+                    defaultReps: currentExercise.targetReps,
+                    defaultRestSec: currentExercise.restSec,
+                    instructions: "Set bench to 30° incline. Drive dumbbells up with elbows at 45°.",
+                    safetyTips: "Control descent, keep shoulder blades retracted.",
+                    imageUrl: currentExercise.imageUrl,
+                  });
+                }}
+                className="text-zinc-500 hover:text-white p-1"
+              >
+                ⓘ
+              </button>
+            </h2>
+          </div>
         </div>
 
-        <div className="space-y-2.5">
-          {currentExercise.sets.map((set) => (
-            <div
-              key={set.id}
-              className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                set.completed
-                  ? "bg-zinc-950 border-lime-500/30 text-zinc-400"
-                  : "bg-zinc-900 border-white/10"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-zinc-800 text-white font-extrabold text-sm flex items-center justify-center border border-white/5">
-                  {set.setNumber}
-                </span>
+        {/* Dual Illustration Box: Exercise Image + Targeted Muscle Diagram */}
+        <div className="grid grid-cols-2 gap-3 p-3 rounded-3xl bg-[#12141c] border border-white/10">
+          <div className="relative rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 aspect-video flex items-center justify-center">
+            {currentExercise.imageUrl ? (
+              <img
+                src={currentExercise.imageUrl}
+                alt={currentExercise.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Dumbbell className="w-10 h-10 text-lime-400" />
+            )}
+            <span className="absolute bottom-2 left-2 text-[10px] font-black bg-black/70 px-2 py-0.5 rounded-md text-lime-400">
+              EXECUTION
+            </span>
+          </div>
 
-                <div className="space-y-1">
-                  {/* Weight Controls */}
-                  <div className="flex items-center gap-1">
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-zinc-900 border border-white/10 p-2 overflow-hidden">
+            <img
+              src={getWorkoutImage(currentExercise.targetMuscle, [currentExercise.targetMuscle, ...currentExercise.secondaryMuscles])}
+              alt={currentExercise.targetMuscle}
+              className="w-20 h-20 object-cover rounded-xl border border-lime-400/20"
+            />
+            <span className="text-[10px] font-black text-lime-400 uppercase mt-1 text-center">
+              TARGET: {currentExercise.targetMuscle}
+            </span>
+          </div>
+        </div>
+
+        {/* Set Table */}
+        <div className="p-4 rounded-3xl bg-[#12141c] border border-white/10 space-y-3">
+          <div className="grid grid-cols-4 text-center text-xs font-black text-zinc-400 pb-2 border-b border-white/5">
+            <span>Set</span>
+            <span>Weight (kg)</span>
+            <span>Reps</span>
+            <span>Status</span>
+          </div>
+
+          <div className="space-y-2">
+            {currentExercise.sets.map((set, idx) => {
+              const isActiveSet = !set.completed && (idx === 0 || currentExercise.sets[idx - 1]?.completed);
+
+              return (
+                <div
+                  key={set.id}
+                  className={`grid grid-cols-4 items-center text-center p-3 rounded-2xl border transition ${
+                    set.completed
+                      ? "bg-zinc-950/60 border-lime-500/20 text-zinc-400"
+                      : isActiveSet
+                      ? "bg-zinc-900 border-lime-400 ring-1 ring-lime-400 text-white"
+                      : "bg-zinc-900/60 border-white/5 text-zinc-300"
+                  }`}
+                >
+                  <span className="font-black text-sm text-zinc-300">#{set.setNumber}</span>
+
+                  <div className="flex items-center justify-center gap-1">
                     <button
                       onClick={() => handleUpdateSetWeight(set.id, -2.5)}
                       className="p-1 rounded bg-zinc-800 text-zinc-300 hover:text-white"
                     >
-                      <Minus className="w-3.5 h-3.5" />
+                      <Minus className="w-3 h-3" />
                     </button>
-                    <span className="text-lg font-black text-white w-16 text-center font-mono">
-                      {set.weightKg} <span className="text-xs font-normal text-zinc-400">kg</span>
+                    <span className="font-mono font-black text-sm text-white w-10">
+                      {set.weightKg}
                     </span>
                     <button
                       onClick={() => handleUpdateSetWeight(set.id, 2.5)}
                       className="p-1 rounded bg-zinc-800 text-zinc-300 hover:text-white"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3 h-3" />
                     </button>
                   </div>
 
-                  {/* Reps Controls */}
-                  <div className="flex items-center gap-1 text-xs text-zinc-400">
+                  <div className="flex items-center justify-center gap-1">
                     <button
                       onClick={() => handleUpdateSetReps(set.id, -1)}
-                      className="p-0.5 rounded bg-zinc-800 hover:text-white"
+                      className="p-1 rounded bg-zinc-800 text-zinc-300 hover:text-white"
                     >
-                      -
+                      <Minus className="w-3 h-3" />
                     </button>
-                    <span className="font-mono font-bold text-zinc-200 px-1">{set.reps} reps</span>
+                    <span className="font-mono font-black text-sm text-white w-8">
+                      {set.reps}
+                    </span>
                     <button
                       onClick={() => handleUpdateSetReps(set.id, 1)}
-                      className="p-0.5 rounded bg-zinc-800 hover:text-white"
+                      className="p-1 rounded bg-zinc-800 text-zinc-300 hover:text-white"
                     >
-                      +
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-center">
+                    <button
+                      onClick={() => handleToggleSet(set.id)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+                        set.completed
+                          ? "bg-lime-400 text-black shadow-md shadow-lime-400/20"
+                          : "border-2 border-zinc-700 hover:border-lime-400 text-transparent"
+                      }`}
+                    >
+                      ✓
                     </button>
                   </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </div>
 
-              {/* Complete Set Button */}
+        {/* Workout Timer Card */}
+        <div className="p-4 rounded-3xl bg-[#12141c] border border-white/10 space-y-4">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-zinc-400 flex items-center gap-1.5 uppercase font-black tracking-wider">
+              <Clock className="w-4 h-4 text-lime-400" />
+              Workout Timer
+            </span>
+            {isRestTimerActive && (
+              <span className="text-lime-400 font-extrabold animate-pulse">Timer Active...</span>
+            )}
+          </div>
+
+          {/* Digital Timer Clock Display & Play/Pause */}
+          <div className="flex items-center justify-between px-2 bg-zinc-950/60 p-3 rounded-2xl border border-white/5">
+            <div>
+              <div className="text-4xl font-black font-mono text-lime-400 tracking-wider">
+                {formatTime(restTimeSec)}
+              </div>
+              <span className="text-[10px] text-zinc-500 font-semibold">Remaining time</span>
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => handleToggleSet(set.id)}
-                className={`px-5 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-2 transition active:scale-95 ${
-                  set.completed
-                    ? "bg-lime-400 text-black shadow-lg shadow-lime-400/20"
-                    : "bg-zinc-800 text-white hover:bg-zinc-700 border border-white/10"
-                }`}
+                onClick={() => setIsRestTimerActive(!isRestTimerActive)}
+                className="p-3.5 bg-lime-400 text-black rounded-2xl shadow-lg shadow-lime-400/20 hover:bg-lime-300 transition cursor-pointer flex items-center gap-2 font-black text-xs"
               >
-                {set.completed ? (
+                {isRestTimerActive ? (
                   <>
-                    <CheckCircle2 className="w-5 h-5 fill-black text-lime-400" />
-                    <span>DONE</span>
+                    <Pause className="w-5 h-5 fill-black" />
+                    <span className="hidden sm:inline">PAUSE</span>
                   </>
                 ) : (
-                  <span>COMPLETE</span>
+                  <>
+                    <Play className="w-5 h-5 fill-black" />
+                    <span className="hidden sm:inline">START</span>
+                  </>
                 )}
               </button>
+              <button
+                onClick={() => {
+                  setRestTimeSec(0);
+                  setIsRestTimerActive(false);
+                }}
+                className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-2xl text-xs font-bold transition cursor-pointer"
+              >
+                SKIP
+              </button>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Rest Timer Card */}
-      <div className="p-5 rounded-3xl bg-zinc-900 border border-white/10 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-lime-400">
-            <Clock className="w-4 h-4" />
-            <span>REST TIMER</span>
           </div>
-          {isRestTimerActive && (
-            <span className="text-xs font-extrabold text-amber-400 animate-pulse">RESTING...</span>
-          )}
-        </div>
 
-        <div className="text-center py-2">
-          <div className="text-5xl font-black font-mono tracking-wider text-lime-400">
-            {formatTime(restTimeSec)}
-          </div>
           {restTimeSec === 0 && (
-            <div className="mt-3 p-3 bg-red-950/80 border border-red-500 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 animate-pulse">
+            <div className="p-3 bg-red-950/80 border border-red-500/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 animate-pulse">
               <span className="text-xs font-black text-red-300 uppercase flex items-center gap-1.5">
                 <Volume2 className="w-4 h-4 text-yellow-300 animate-bounce" />
-                <span>Rest Time Ended! Sound Playing</span>
+                <span>Timer Finished! Alarm Playing</span>
               </span>
               <button
                 onClick={() => stopSynthSound()}
-                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-xl shadow flex items-center gap-1.5 transition active:scale-95"
+                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-xl shadow flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
               >
                 <Square className="w-3.5 h-3.5 fill-white" />
                 <span>STOP ALARM</span>
               </button>
             </div>
           )}
+
+          {/* Presets Row */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Presets</span>
+            <div className="grid grid-cols-5 gap-1.5 text-xs font-extrabold">
+              {[30, 60, 90, 120, 180].map((presetSec) => (
+                <button
+                  key={presetSec}
+                  onClick={() => {
+                    setRestTimeSec(presetSec);
+                    setIsRestTimerActive(true);
+                  }}
+                  className={`py-2 rounded-xl border transition cursor-pointer ${
+                    restTimeSec === presetSec
+                      ? "bg-lime-400 text-black border-lime-400 font-black shadow-md shadow-lime-400/20"
+                      : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-white/5"
+                  }`}
+                >
+                  {presetSec}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Duration Adjuster (-15s / Exact Seconds / +15s) */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custom Adjustment</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setRestTimeSec((p) => Math.max(0, p - 15))}
+                className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 rounded-xl border border-white/10 font-black text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Minus className="w-3.5 h-3.5 text-lime-400" />
+                <span>-15s</span>
+              </button>
+
+              <div className="flex-1 bg-zinc-950 border border-lime-400/30 rounded-xl px-3 py-1.5 flex items-center justify-center gap-1">
+                <input
+                  type="number"
+                  value={restTimeSec}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setRestTimeSec(Math.max(0, val));
+                  }}
+                  className="w-14 bg-transparent text-center font-mono font-black text-lime-400 text-base focus:outline-none"
+                  min="0"
+                  max="3600"
+                />
+                <span className="text-xs font-bold text-zinc-500">sec</span>
+              </div>
+
+              <button
+                onClick={() => setRestTimeSec((p) => p + 15)}
+                className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 rounded-xl border border-white/10 font-black text-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5 text-lime-400" />
+                <span>+15s</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Add Buttons & Reset */}
+          <div className="grid grid-cols-4 gap-2 text-xs font-extrabold pt-1">
+            <button
+              onClick={() => setRestTimeSec((p) => p + 10)}
+              className="py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-xl border border-white/5 cursor-pointer"
+            >
+              +10s
+            </button>
+            <button
+              onClick={() => setRestTimeSec((p) => p + 30)}
+              className="py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-xl border border-white/5 cursor-pointer"
+            >
+              +30s
+            </button>
+            <button
+              onClick={() => setRestTimeSec((p) => p + 60)}
+              className="py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-xl border border-white/5 cursor-pointer"
+            >
+              +60s
+            </button>
+            <button
+              onClick={() => {
+                setRestTimeSec(customRestSec || currentExercise.restSec || 90);
+                setIsRestTimerActive(true);
+              }}
+              className="py-2 bg-zinc-900 hover:bg-zinc-800 text-amber-400 rounded-xl border border-white/5 cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
-        {/* Quick Adjust Buttons */}
-        <div className="grid grid-cols-4 gap-2 text-xs font-bold">
-          <button
-            onClick={() => setRestTimeSec((p) => p + 10)}
-            className="py-2 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 rounded-xl border border-white/5"
-          >
-            +10s
-          </button>
-          <button
-            onClick={() => setRestTimeSec((p) => p + 30)}
-            className="py-2 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 rounded-xl border border-white/5"
-          >
-            +30s
-          </button>
-          <button
-            onClick={() => setRestTimeSec((p) => p + 60)}
-            className="py-2 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 rounded-xl border border-white/5"
-          >
-            +60s
-          </button>
+        {/* Progressive Overload Box */}
+        <div className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 flex items-center justify-between text-xs font-bold text-zinc-400">
+          <div>
+            Last Time: <span className="text-white">22.5 kg x 10 Reps</span>
+          </div>
+          <div className="text-lime-400 font-extrabold">
+            Suggested: <span className="text-lime-300">25 kg x 8-10</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
           <button
             onClick={() => {
-              setRestTimeSec(customRestSec || currentExercise.restSec || 90);
-              setIsRestTimerActive(true);
+              const activeSet = currentExercise.sets.find((s) => !s.completed);
+              if (activeSet) {
+                handleToggleSet(activeSet.id);
+              } else {
+                handleNextExercise();
+              }
             }}
-            className="py-2 bg-zinc-800 hover:bg-zinc-750 text-amber-400 rounded-xl border border-white/5"
+            className="w-full py-4 bg-lime-400 hover:bg-lime-300 text-black font-black text-sm rounded-2xl shadow-xl shadow-lime-400/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
           >
-            Reset
+            <CheckCircle2 className="w-5 h-5 fill-black" />
+            <span>COMPLETE SET</span>
           </button>
-        </div>
 
-        <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsRestTimerActive(!isRestTimerActive)}
-            className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
+            onClick={handleNextExercise}
+            className="w-full py-4 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
           >
-            {isRestTimerActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span>{isRestTimerActive ? "PAUSE REST" : "START WORKOUT"}</span>
-          </button>
-          <button
-            onClick={() => setIsRestTimerActive(false)}
-            className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold rounded-xl"
-          >
-            SKIP
+            <span>NEXT EXERCISE</span>
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+
 
       {/* Navigation Controls */}
       <div className="flex items-center justify-between gap-3 pt-2">

@@ -99,40 +99,56 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({ profile, today
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto pb-12 flex flex-col h-[calc(100vh-140px)]">
-      {/* Header & Medical Disclaimer */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900 border border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-400">
-              <Bot className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-extrabold text-white">AI Gym Assistant & Coach</h2>
-              <p className="text-xs text-zinc-400">Personalized training, exercise alternatives, and nutrition advice</p>
-            </div>
+      {/* Screen 3 Design Layout: AI Assistant */}
+      {/* Robot Neon Illustration & Header */}
+      <div className="flex flex-col items-center text-center space-y-3 pt-2">
+        <div className="relative">
+          <div className="w-20 h-20 rounded-3xl bg-lime-400/10 border-2 border-lime-400 flex items-center justify-center text-lime-400 shadow-[0_0_20px_rgba(163,230,53,0.3)]">
+            <Bot className="w-10 h-10 stroke-[2.2]" />
           </div>
-
-          <button
-            onClick={() => setMessages([messages[0]])}
-            className="p-2 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl text-xs flex items-center gap-1"
-            title="Reset Chat"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span className="hidden sm:inline">Clear Chat</span>
-          </button>
+          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-lime-400 border-2 border-black flex items-center justify-center text-[10px] text-black font-black">
+            ✓
+          </span>
         </div>
 
-        {/* Medical Disclaimer Alert Banner */}
-        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
-          <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <strong className="text-amber-400">Medical & Injury Disclaimer:</strong> FitPulse AI Assistant provides general fitness guidance and exercise recommendations. If you experience severe pain, joint discomfort, or dizziness, stop training and consult a medical doctor or licensed physical therapist.
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-white">
+            Hello {profile.name}! 👋
+          </h2>
+          <p className="text-xs text-zinc-400 font-medium">How can I help you today?</p>
         </div>
       </div>
 
+      {/* Preset Prompt Categories */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {[
+          { title: "Workout Help", desc: "Plan, split, routine", icon: "🏋️", prompt: "Help me optimize my workout split and routine" },
+          { title: "Exercise Alternative", desc: "Find alternate exercises", icon: "🔄", prompt: "Suggest alternatives for Bench Press and Shoulder Press" },
+          { title: "Form Tips", desc: "Improve your form", icon: "💡", prompt: "Give me form tips for Bench Press and Incline Press" },
+          { title: "Nutrition", desc: "Diet & meal suggestions", icon: "🥗", prompt: "What is the best post-workout meal for muscle recovery?" },
+          { title: "Recovery", desc: "Sleep, soreness, injury", icon: "🩹", prompt: "How to recover fast from severe muscle soreness?" },
+        ].map((item, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleSend(item.prompt)}
+            className="p-3.5 rounded-2xl bg-[#12141c] border border-white/10 hover:border-lime-400/40 transition flex items-center justify-between text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{item.icon}</span>
+              <div>
+                <h4 className="font-extrabold text-white text-sm group-hover:text-lime-400 transition">
+                  {item.title}
+                </h4>
+                <p className="text-[11px] text-zinc-400 font-medium">{item.desc}</p>
+              </div>
+            </div>
+            <span className="text-zinc-500 group-hover:text-lime-400 font-bold transition">›</span>
+          </button>
+        ))}
+      </div>
+
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto bg-zinc-950 border border-white/10 rounded-3xl p-4 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto bg-[#12141c] border border-white/10 rounded-3xl p-4 space-y-4 custom-scrollbar min-h-[200px]">
         {messages.map((m) => (
           <div
             key={m.id}
@@ -144,16 +160,16 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({ profile, today
               className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 m.sender === "user"
                   ? "bg-lime-400 text-black"
-                  : "bg-cyan-400/20 text-cyan-400 border border-cyan-400/30"
+                  : "bg-lime-400/20 text-lime-400 border border-lime-400/30"
               }`}
             >
               {m.sender === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
 
             <div
-              className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed space-y-1 ${
+              className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed space-y-1 ${
                 m.sender === "user"
-                  ? "bg-lime-400 text-black font-medium"
+                  ? "bg-lime-400 text-black font-semibold"
                   : "bg-zinc-900 border border-white/10 text-zinc-200"
               }`}
             >
@@ -170,26 +186,38 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({ profile, today
         ))}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-cyan-400 font-bold p-3 bg-zinc-900/60 rounded-2xl border border-cyan-400/20 w-max animate-pulse">
+          <div className="flex items-center gap-2 text-xs text-lime-400 font-bold p-3 bg-zinc-900/60 rounded-2xl border border-lime-400/20 w-max animate-pulse">
             <Sparkles className="w-4 h-4" />
-            <span>AI Coach is thinking & analyzing your workout query...</span>
+            <span>AI Coach is analyzing your query...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Prompt Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-        {quickPrompts.map((qp, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleSend(qp)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-white/10 hover:border-cyan-400/40 text-xs text-zinc-300 whitespace-nowrap transition"
-          >
-            💡 {qp}
-          </button>
-        ))}
+      {/* Recent Conversations List */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs font-bold text-zinc-400 px-1">
+          <span>Recent Conversations</span>
+          <span className="text-lime-400 hover:underline cursor-pointer">View All</span>
+        </div>
+
+        <div className="space-y-1.5">
+          {[
+            { title: "How to increase bench press?", time: "Today" },
+            { title: "Best shoulder workout?", time: "Yesterday" },
+            { title: "How much protein do I need?", time: "2 Days Ago" },
+          ].map((item, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleSend(item.title)}
+              className="w-full p-2.5 rounded-xl bg-[#12141c] border border-white/5 hover:border-lime-400/30 flex items-center justify-between text-xs text-zinc-300 font-medium transition cursor-pointer"
+            >
+              <span>💬 {item.title}</span>
+              <span className="text-[10px] text-zinc-500">{item.time}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Input Box */}

@@ -288,7 +288,7 @@ export const App: React.FC = () => {
             profile={profile}
             notifPrefs={notifPrefs}
             prs={prs}
-            onStartWorkout={() => setShowStartWorkoutModal(true)}
+            onStartWorkout={() => setIsWorkoutMode(true)}
             onToggleExerciseSet={handleToggleExerciseSetInDashboard}
             onOpenWorkoutsBuilder={() => setActiveTab("workouts")}
             onOpenTimers={() => setActiveTab("timers")}
@@ -341,7 +341,7 @@ export const App: React.FC = () => {
           <CalendarView
             schedule={schedule}
             workoutLogs={workoutLogs}
-            onStartWorkout={() => setShowStartWorkoutModal(true)}
+            onStartWorkout={() => setIsWorkoutMode(true)}
           />
         );
       case "ai":
@@ -439,18 +439,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Start Workout Session Dialogue Box Modal */}
-      {showStartWorkoutModal && (
-        <StartWorkoutModal
-          workoutPlan={todayPlan}
-          onConfirmStart={(customRestSec) => {
-            setSessionCustomRestSec(customRestSec);
-            setShowStartWorkoutModal(false);
-            setIsWorkoutMode(true);
-          }}
-          onClose={() => setShowStartWorkoutModal(false)}
-        />
-      )}
+
 
       {/* Onboarding Welcome Modal */}
       {showOnboarding && (
@@ -499,7 +488,7 @@ export const App: React.FC = () => {
           <Header
             profile={profile}
             notifPrefs={notifPrefs}
-            onStartWorkout={() => setShowStartWorkoutModal(true)}
+            onStartWorkout={() => setIsWorkoutMode(true)}
             onOpenReminders={() => setActiveTab("reminders")}
             onOpenAI={() => setActiveTab("ai")}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -513,11 +502,11 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Touch Bottom Nav */}
+      {/* Bottom Nav */}
       <BottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onStartWorkout={() => setShowStartWorkoutModal(true)}
+        onStartWorkout={() => setIsWorkoutMode(true)}
       />
     </div>
   );
